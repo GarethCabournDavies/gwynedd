@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+
+"""
+A script to plot the detector response for a chosen detector
+"""
+
+import lal
+from gwynedd import detector
+import argparse
+
+parser = argparse.ArgumentParser(description=__doc__)
+detector.insert_detector_option_group(parser)
+args = parser.parse_args()
+
+if args.custom_detector:
+   create_custom_detector((args.custom_detector_prefix, args.custom_detector_name), position, angle, arm_length) 
