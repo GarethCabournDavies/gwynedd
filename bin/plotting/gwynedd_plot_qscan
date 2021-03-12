@@ -1,0 +1,99 @@
+#!/usr/bin/python
+
+import matplotlib
+matplotlib.use('agg')
+from matplotlib import pyplot as plt
+import numpy as np
+import logging
+import argparse
+from pycbc import init_logging
+from gwynedd import strain
+from gwynedd import frame
+from pycbc.frame import read_frame
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--verbose', action='store_true')
+parser.add_argument('--output-file', required=True, help='Output plot')
+parser.add_argument('--frame-file', help="file(s) containing data")
+parser.add_argument('--channel-name', help="Channel in the frame file(s)")
+parser.add_argument('--centre-time', type=float)
+parser.add_argument('--plot-time-width', type=float)
+parser.add_argument('--qtransform-delta-t', default=0.001, type=float,
+                    help='The time resolution to interpolate to (optional)')
+parser.add_argument('--qtransform-delta-f', type=float,
+                    help='Frequency resolution to interpolate to (optional)')
+parser.add_argument('--qtransform-logfsteps', type=int, default=200,
+                    help='Do a log interpolation (incompatible with '
+                         '--qtransform-delta-f option) and set the number '
+                         'of steps to take')
+parser.add_argument('--qtransform-frange-lower', type=float,
+                    help='Lower frequency (in Hz) at which to compute '
+                         'qtransform. Optional, default=20 Hz')
+parser.add_argument('--qtransform-frange-upper', type=float,
+                    help='Upper frequency (in Hz) at which to compute '
+                         'qtransform. Optional, default=Half of Nyquist')
+parser.add_argument('--qtransform-qrange-lower', default=4, type=float,
+                    help='Lower limit of the range of q to consider, '
+                         'default=%(default)f')
+parser.add_argument('--qtransform-qrange-upper', default=64, type=float,
+                    help='Upper limit of the range of q to consider, '
+                         'default=%(default)f')
+parser.add_argument('--qtransform-mismatch', default=0.2, type=float,
+                    help='Mismatch between frequency tiles, default=%(default)f')
+args = parser.parse_args()
+
+init_logging(args.verbose)
+
+# Check input:
+if bool(args.qtransform_frange_upper is None) ^ \
+          bool(args.qtransform_frange_lower is None):
+    parser.error('Must provide either both --qtransform-frange-upper and '
+                 '--qtransform-frange-lower or neither option.')
+
+gps_start_time = args.centre_time - args.plot_time_width / 2.
+gps_end_time = args.centre_time + args.plot_time_width / 2.
+
+logging.info("Getting strain data from file")
+strain_data = read_frame(args.frame_file, args.channel_name,
+                         start_time=gps_start_time,
+                         end_time=gps_end_time, check_integrity=True)
+
+# Some of the data will be corrupted by the whitening
+# Remove this unless removing it makes the data too short
+rem_corrupted = True
+if (strain_data.start_time - strain_data.end_time) < 4:
+    rem_corrupted = False
+
+logging.info('Conditioning the strain')
+strain_data = strain_data.whiten(4, 4, remove_corrupted=rem_corrupted,
+                                 low_frequency_cutoff=None)
+
+if args.qtransform_frange_upper is None and \
+        args.qtransform_frange_lower is None:
+    frange = (20, strain_data.sample_rate / 4.)
+else:
+    frange = (args.qtransform_frange_lower, args.qtransform_frange_upper)
+
+
+logging.info('Calculating qtransform')
+times, freqs, qvals = strain_data.qtransform(
+            delta_t=args.qtransform_delta_t, delta_f=args.qtransform_delta_f,
+            logfsteps=args.qtransform_logfsteps,
+            frange=frange, mismatch=args.qtransform_mismatch,
+            qrange=(args.qtransform_qrange_lower, args.qtransform_qrange_upper))
+
+
+logging.info('Plotting')
+fig = plt.figure(figsize=(10,4))
+ax = fig.add_subplot(111)
+im = ax.pcolormesh(times - args.centre_time, freqs, qvals,
+                   norm=matplotlib.colors.LogNorm(vmin=1, vmax=qvals.max()))
+ax.set_xlabel('Time from {:.3f} (s)'.format(args.centre_time))
+ax.set_ylabel('Frequency (Hz)')
+ax.set_yscale('log')
+
+
+cb = fig.colorbar(im, ax=ax)
+cb.set_label('Normalized power')
+
+fig.savefig(args.output_file)

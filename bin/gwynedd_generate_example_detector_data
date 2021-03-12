@@ -1,0 +1,50 @@
+#!/usr/bin/python
+"""
+This is a code to generate fake data 
+"""
+import gwynedd
+from pycbc import init_logging
+import pycbc.psd
+from gwynedd.frame import write_frame
+from gwynedd import strain
+from gwynedd import detector
+import argparse
+import logging
+import os
+import numpy as np
+from pycbc.filter import resample_to_delta_t
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--verbose', action='store_true')
+parser.add_argument('--output-directory', type=str, default=os.getcwd(),
+                    help="Output directory for generated frame files. "
+                         "Default = current working directory.")
+
+strain.insert_fake_data_option_group(parser)
+strain.insert_frame_file_output_group(parser)
+detector.insert_detector_option_group(parser)
+args = parser.parse_args()
+init_logging(args.verbose)
+
+logging.info("Checking input options")
+detector.check_detector_option_group(args)
+det = detector.from_cli(args)
+
+logging.info("Generating strain data")
+# Generate the strain
+fake_strain = strain.from_cli(args)
+fake_strain = resample_to_delta_t(fake_strain, 1. / args.output_sample_rate)
+
+init_logging(args.verbose)
+logging.info("Outputting frame file to " + args.output_directory)
+
+# Make the output frame filename according to convention
+duration = args.gps_end_time - args.gps_start_time
+output_filename = '{}-{}_{}-{}-{}.gwf'.format(det.name[0], det.name,
+                                              args.frame_type,
+                                              args.gps_start_time, duration)
+
+logging.info("Writing file {:s}".format(output_filename))
+write_frame(os.path.join(args.output_directory, output_filename),
+                         args.channel_name, fake_strain,
+                         detector=det)
