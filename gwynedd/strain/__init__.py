@@ -1,1 +1,1 @@
-from gwynedd.strain.strain import *
+from .strain import *

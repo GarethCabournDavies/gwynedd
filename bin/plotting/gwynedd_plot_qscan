@@ -87,7 +87,8 @@ logging.info('Plotting')
 fig = plt.figure(figsize=(10,4))
 ax = fig.add_subplot(111)
 im = ax.pcolormesh(times - args.centre_time, freqs, qvals,
-                   norm=matplotlib.colors.LogNorm(vmin=1, vmax=qvals.max()))
+                   norm=matplotlib.colors.LogNorm(vmin=1, vmax=qvals.max()),
+                   shading='auto')
 ax.set_xlabel('Time from {:.3f} (s)'.format(args.centre_time))
 ax.set_ylabel('Frequency (Hz)')
 ax.set_yscale('log')

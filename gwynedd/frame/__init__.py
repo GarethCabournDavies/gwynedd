@@ -1,1 +1,1 @@
-from gwynedd.frame.frame import *
+from .frame import *
