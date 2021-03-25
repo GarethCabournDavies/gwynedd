@@ -14,5 +14,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install *fftw3* mpi intel-mkl* git-lfs
         pip install tox pip setuptools --upgrade
-#   - run: pip install -r requirements.txt
-#   - run: pip install .
+    - name: installing gwynedd requirements
+      run: pip install -r requirements.txt
+    - name: installing gwynedd
+      run: pip install .
