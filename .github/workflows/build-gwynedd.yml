@@ -1,5 +1,4 @@
 name: build-gwynedd
-
 on: [push, pull_request]
 
 jobs:
