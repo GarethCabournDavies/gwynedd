@@ -5,6 +5,7 @@ import logging
 from pycbc.types import TimeSeries
 import numpy as np
 from pycbc import DYN_RANGE_FAC
+from gwynedd.inject import InjectionSet
 
 def insert_fake_data_option_group(parser):
     """
@@ -47,6 +48,10 @@ def insert_fake_data_option_group(parser):
                 default=16384, type=float,
                 help="Sample rate of the fake data generation (keep this the "
                      "same to get the same data at different sample rates)")
+    data_fake_strain_group.add_argument("--injection-files", nargs='+',
+                help="File used to define the glitches and signals being "
+                     "injected into te fake data")
+
     return data_fake_strain_group
 
 def insert_frame_file_output_group(parser):
@@ -92,16 +97,15 @@ def from_cli(args, dyn_range_fac=DYN_RANGE_FAC, precision=None, pad_data=8.):
         Default: 5.9029581035870565e+20 (DYN_RANGE_FAC from pycbc)
     precision : string
         Precision of the returned strain ('single' or 'double').
-    inj_filter_rejector : InjFilterRejector instance; optional, default=None
-        If given send the InjFilterRejector instance to the inject module so
-        that it can store a reduced representation of injections if
-        necessary.
+    pad_data: float
+        Time (s) to add to the start and end of the data when generating it in
+        order to account for various filter effects.
+
     Returns
     -------
     strain : TimeSeries
         The time series containing the conditioned strain data.
     """
-#    injector = InjectionSet.from_cli(args)
 
     logging.info("Generating Fake Strain")
     duration = args.gps_end_time - args.gps_start_time
@@ -135,9 +139,7 @@ def from_cli(args, dyn_range_fac=DYN_RANGE_FAC, precision=None, pad_data=8.):
                                low_frequency_cutoff=fake_flow)
 
     ####### THIS IS WHERE GLITCH INJECTIONS WOULD BE INCLUDED
-
-#    Keeping this as the 
-#    if injector is not None:
+    injector = InjectionSet.from_cli(args)
 #        logging.info("Applying injections")
 #        injections = \
 #            injector.apply(strain, args.channel_name[0:2],
