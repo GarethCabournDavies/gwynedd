@@ -1,4 +1,19 @@
 name: build-gwynedd
 on: [push, pull_request]
-steps:
-   - run: pip install .
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+    - uses: actions/setup-python@v2
+    - name: installing system packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install *fftw3* mpi intel-mkl* git-lfs
+        pip install tox pip setuptools --upgrade
+    - name: installing gwynedd requirements
+      run: pip install -r requirements.txt
+    - name: installing gwynedd
+      run: pip install .
